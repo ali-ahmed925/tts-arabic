@@ -1,0 +1,17 @@
+# Arabic TTS evaluation pipeline — Python dependencies.
+#
+# IMPORTANT: install torch FIRST with a CUDA build matching your GPU, e.g. CUDA 12.1:
+#     pip install torch --index-url https://download.pytorch.org/whl/cu121
+# (Omit the index-url for a CPU-only build. Tested with torch 2.5.1+cu121.)
+#
+# System dependency (NOT installable via pip): ffmpeg  — required for MP3 export.
+#     Ubuntu/Debian:  sudo apt-get install ffmpeg
+
+torch>=2.2,<3
+# transformers 5.x broke the VITS lazy-import in our tests; pin to the 4.x line.
+transformers>=4.35,<5
+huggingface_hub
+numpy
+soundfile
+librosa
+sentencepiece

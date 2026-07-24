@@ -1,0 +1,34 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# ---- Virtual envs / vendored deps ----
+.venv/
+venv/
+env/
+# isolated `pip --target` dir used when reusing an existing env
+deps/
+
+# ---- Generated pipeline outputs ----
+# intermediate WAVs (MP3s are the kept deliverable)
+results/audio/*.wav
+# LibreOffice/spreadsheet lock files
+.~lock.*#
+# To keep the repo lean you may also ignore all generated results:
+# results/audio/
+# results/results.csv
+# results/report.md
+
+# ---- Model / dataset caches ----
+.cache/
+hf_cache/
+*.gguf
+
+# ---- OS / editor ----
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
