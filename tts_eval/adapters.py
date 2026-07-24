@@ -124,9 +124,35 @@ def load_audar_gguf(repo, device, gguf_file):
         "handled as a documented stretch attempt."
     )
 
+def load_omnivoice(repo, device):
+    from omnivoice import OmniVoice
 
+    model = OmniVoice.from_pretrained(repo)
+
+    if device == "cuda":
+        model = model.cuda()
+
+    model.eval()
+
+    def generate(text):
+        wavs = model.generate(
+            text,
+            language="ar"
+        )
+
+        wav = wavs[0]
+
+        # OmniVoice returns numpy array
+        return wav, 24000
+
+    def teardown():
+        del model
+        free_cuda()
+
+    return generate, 24000, teardown
 ADAPTERS = {
     "vits": lambda m, dev: load_vits(m["hf_repo"], dev),
     "speecht5": lambda m, dev: load_speecht5(m["hf_repo"], dev),
     "audar_gguf": lambda m, dev: load_audar_gguf(m["hf_repo"], dev, m["gguf_file"]),
+    "omnivoice": lambda m, dev: load_omnivoice(m["hf_repo"], dev),
 }
