@@ -84,8 +84,8 @@ Then pass `PYTHON` and `EXTRA_DEPS` to `run.sh` (see below).
 PYTHON=$ENV_PY EXTRA_DEPS=./deps ./run.sh
 ```
 
-Model ids are the `"id"` fields in [tts_eval/config.py](tts_eval/config.py):
-`mms-tts-ara`, `lahja-sa-huba-v1`, `speecht5-clartts-ar`, `seyedali-mms-ar`, `audar-tts-v1-flash-q4`.
+Model ids are the "id" fields in tts_eval/config.py:
+mms-tts-ara, lahja-sa-huba-v1, speecht5-clartts-ar, seyedali-mms-ar, audar-tts-v1-flash-q4, voicetut-tts.
 
 Re-running a model **overwrites its own CSV row** (upsert) — no duplicates.
 
