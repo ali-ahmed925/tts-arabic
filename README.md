@@ -38,12 +38,27 @@ The goal: find a model that sounds **natural/expressive**, not robotic, while st
 python3 -m venv .venv
 source .venv/bin/activate
 
-# 1) install torch with a CUDA build for your GPU (CUDA 12.1 example):
+# 1) install torch:
+#    GPU (CUDA 12.1 example):
 pip install torch --index-url https://download.pytorch.org/whl/cu121
+#    CPU-only (no NVIDIA GPU) — plain build, no index-url:
+pip install torch
 
 # 2) install the rest:
 pip install -r requirements.txt
 ```
+
+### No GPU? It still works.
+
+The pipeline auto-detects hardware (`device = "cuda" if available else "cpu"`), so no
+code or flags change. On a CPU-only machine:
+
+- Install the **CPU torch** build (above).
+- Read the **CPU RAM** column instead of VRAM (the VRAM column reports `0`, since no
+  GPU is used).
+- Expect slower runs, but the small VITS models are still faster than real-time on CPU
+  (measured RTF ≈ 0.58, ~0.8 GB RAM). SpeechT5 runs in fp32 and the Whisper ASR scorer
+  is the slowest step.
 
 ### Option B — reuse an existing conda env that already has CUDA torch
 
