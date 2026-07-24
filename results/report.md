@@ -16,7 +16,8 @@
 | lahja-sa-huba-v1 | 414.0 MB | 0.095 | 20.45s | 0.11 | 20.3 Hz | ok |
 | seyedali-mms-ar | 524.0 MB | 0.059 | 32.3s | 0.127 | 41.4 Hz | ok |
 | speecht5-clartts-ar | 546.0 MB | 0.166 | 25.58s | 0.066 | 16.4 Hz | ok |
-| mms-tts-ara | 524.0 MB | 0.057 | 32.7s | 0.094 | 42.1 Hz | ok |
+| mms-tts-ara | 0.0 MB | 0.205 | 31.66s |  | 41.4 Hz | ok |
+| voicetut-tts | 0.0 MB | 9.348 | 20.06s | 0.033 | 17.5 Hz | ok |
 
 ## Per-model detail
 
@@ -39,10 +40,16 @@
 *   **ASR heard:** صباح الخير وشكرا لك على وقتك للتحدث تمع اليوم، التطلع إلى فهم أسلوبك في العمل وشخصيتك بشكل أفضل لنندأ هل يمكن أن تحدثني عن موقف الترارف فيه إلى التكيف مع مشروع أو مبادرة جديدة في العمل كيف كان شعورك وانت تتعلم شيء جديدة 
 
 **Model 4: mms-tts-ara  (`facebook/mms-tts-ara`)**
-*   **Audio Output:** results/audio/mms-tts-ara.mp3
-*   **Expressiveness / Quality Notes:** highly intelligible; moderate pitch variation. ASR-CER=0.094, F0 std=42.1 Hz, voiced ratio=0.873. Arch: vits (~36M).
-*   **Memory Consumed:** 524.0 MB VRAM (peak, process), 1392.8 MB CPU RSS
-*   **ASR heard:** الصباح الخير وشكرا لك على وقتك للتحدث معي اليومي أطلعوا إلى فهم أسلوبك في العمل وشخصيتك بشكل أفضل لبدأ هل يمكنك أن تحدثني عن موقف إطرار فيه إلى التكيف مع مشروع أو مبادلة جديدة في العملي كيف كان الشعورك وانت تتعلم شيء جدي
+*   **Audio Output:** results\audio\mms-tts-ara.mp3
+*   **Expressiveness / Quality Notes:** n/a; moderate pitch variation. ASR-CER=, F0 std=41.4 Hz, voiced ratio=0.902. Arch: vits (~36M).
+*   **Memory Consumed:** 0.0 MB VRAM (peak, process), 0.0 MB CPU RSS
+*   **ASR heard:** ASR_FAILED: You have passed more than 3000 mel input features (> 30 seconds) which automatically enables long-form gener
+
+**Model 5: voicetut-tts  (`mohammedaly22/VoiceTut-TTS`)**
+*   **Audio Output:** results\audio\voicetut-tts.mp3
+*   **Expressiveness / Quality Notes:** highly intelligible; low pitch variation (flat/monotone). ASR-CER=0.033, F0 std=17.5 Hz, voiced ratio=0.657. Arch: omnivoice (~612M).
+*   **Memory Consumed:** 0.0 MB VRAM (peak, process), 0.0 MB CPU RSS
+*   **ASR heard:** صبح الخير وشكرا لك على وقتك للتحدث مع اليوم أطلع إلى فهم أسلوبك في العمل وشخصيتك بشكل أفضل لنبدأ هل يمكن أن تحدثني عن موقف التررت فيه إلى التكيف مع مشروع أو مبادرة جديدة في العمل كيف كان شعورك وانت تتعلم شيئا جديدا تماما
 
 ## Excluded models (over the 700 MB budget)
 

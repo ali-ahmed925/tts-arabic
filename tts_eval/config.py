@@ -71,6 +71,16 @@ MODELS = [
         "in_budget": True,
         "notes": "Expressive LLM-codec TTS; fits budget only when 4-bit quantized.",
     },
+
+    {
+    "id": "voicetut-tts",
+    "hf_repo": "mohammedaly22/VoiceTut-TTS",
+    "kind": "omnivoice",
+    "lang": "Arabic (Egyptian)",
+    "params": "~612M",
+    "in_budget": False,
+    "notes": "OmniVoice Arabic TTS with voice cloning support. Manual test used ~4.64GB memory.",
+},
 ]
 
 # Documented exclusions — why they fail the 700MB filter (for the report).
