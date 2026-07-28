@@ -87,11 +87,15 @@ def transcribe(wav: np.ndarray, sr: int, model_id: str, device: str) -> str:
             model=model_id,
             device=0 if device == "cuda" else -1,
             torch_dtype=torch.float16 if device == "cuda" else torch.float32,
+            chunk_length_s=30,   # chunk long audio (>30s) instead of failing
         )
     if wav.ndim > 1:
         wav = wav.mean(axis=1)
+    # return_timestamps=True is required by newer transformers for >30s clips;
+    # harmless on older versions. out["text"] is still the full transcription.
     out = _ASR(
         {"array": wav.astype(np.float32), "sampling_rate": sr},
         generate_kwargs={"language": "arabic", "task": "transcribe"},
+        return_timestamps=True,
     )
     return out["text"].strip()

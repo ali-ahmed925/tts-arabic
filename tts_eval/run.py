@@ -20,6 +20,7 @@ CSV_FIELDS = [
     "model_id", "hf_repo", "arch", "params", "lang", "status",
     "peak_vram_mb", "peak_rss_mb", "load_s", "infer_s", "audio_s", "rtf",
     "asr_cer", "f0_std_hz", "f0_mean_hz", "voiced_ratio",
+    "voice_control", "requested_gender", "detected_gender",
     "mp3", "asr_hypothesis", "notes",
 ]
 
@@ -80,6 +81,22 @@ def run_one(spec, device):
         # expressiveness proxy (on the raw waveform)
         row.update(pitch_stats(wav, sr))
 
+        # ---- voice guardrail bookkeeping ----
+        from adapters import VOICE_SELECTABLE
+        selectable = spec["kind"] in VOICE_SELECTABLE
+        row["voice_control"] = "selectable" if selectable else "fixed"
+        row["requested_gender"] = C.VOICE_GENDER
+        f0m = row.get("f0_mean_hz")
+        try:
+            det = "male" if float(f0m) < C.GENDER_F0_THRESHOLD_HZ else "female"
+        except (TypeError, ValueError):
+            det = "?"
+        row["detected_gender"] = det
+        # flag a fixed-voice model whose baked-in gender disagrees with the guardrail
+        if not selectable and det not in ("?", C.VOICE_GENDER):
+            row["notes"] = (row.get("notes", "") +
+                            f" | NOTE: fixed voice is {det}, cannot force {C.VOICE_GENDER}").strip(" |")
+
         # free the TTS model BEFORE loading the ASR evaluator
         try:
             teardown()
@@ -131,8 +148,14 @@ def main():
     print(f"budget={C.VRAM_BUDGET_MB}MB | running {len(selected)} model(s), "
           f"each in an isolated subprocess for clean VRAM measurement")
     for spec in selected:
+        # A model may declare its own interpreter (an isolated venv holding a
+        # heavy runtime like coqui-tts). Default to this process's interpreter.
+        interp = spec.get("python") or sys.executable
+        if not Path(interp).exists():
+            print(f"\n[{spec['id']}] SKIP: interpreter not found: {interp}", flush=True)
+            continue
         # fresh process per model -> clean CUDA context, isolated peak VRAM
-        subprocess.run([sys.executable, __file__, "--single", spec["id"]], check=False)
+        subprocess.run([interp, __file__, "--single", spec["id"]], check=False)
     print(f"\nDone. CSV -> {C.CSV_PATH}")
 
 

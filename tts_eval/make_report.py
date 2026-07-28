@@ -40,10 +40,12 @@ def main():
             rows = list(csv.DictReader(f))
 
     lines = []
-    lines.append("# Arabic TTS Evaluation — Models under a 700 MB VRAM budget\n")
+    lines.append("# Arabic TTS Evaluation — small/expressive models with a male-voice guardrail\n")
     lines.append(f"**Test text (fixed):**\n\n> {C.TEST_TEXT}\n")
     lines.append(f"**Hardware:** NVIDIA RTX 4050 Laptop (6 GB VRAM), 12-core CPU, 30 GB RAM.  ")
-    lines.append(f"**Budget filter:** peak VRAM ≤ {C.VRAM_BUDGET_MB} MB.\n")
+    lines.append(f"**Two tiers evaluated:** a strict **≤{C.VRAM_BUDGET_MB} MB VRAM** tier (small VITS/SpeechT5/ONNX "
+                 "models) and a **≤~2 GB VRAM expressive tier** (XTTS-v2 etc.). CPU/ONNX models report VRAM=0 "
+                 "and should be read on the CPU-RAM column.\n")
     lines.append("**Metrics:** peak VRAM = process GPU memory via nvidia-smi (includes CUDA context). "
                  "`ASR-CER` = Whisper-small round-trip character error rate (intelligibility, lower is better). "
                  "`F0 std` = pitch standard deviation in Hz (expressiveness proxy, higher = less monotone). "
@@ -51,12 +53,16 @@ def main():
 
     # summary table
     lines.append("## Summary\n")
-    lines.append("| Model | Peak VRAM | RTF | Audio | ASR-CER | F0 std | Status |")
-    lines.append("|---|---|---|---|---|---|---|")
+    lines.append("| Model | Arch | Peak VRAM | RTF | ASR-CER | F0 std | Voice | Status |")
+    lines.append("|---|---|---|---|---|---|---|---|")
     for r in rows:
+        ctrl = r.get("voice_control", "")
+        det = r.get("detected_gender", "?")
+        voice = (f"{det} ({'sel' if ctrl=='selectable' else 'fixed'})" if ctrl else "")
         lines.append(
-            f"| {r['model_id']} | {r.get('peak_vram_mb','')} MB | {r.get('rtf','')} | "
-            f"{r.get('audio_s','')}s | {r.get('asr_cer','')} | {r.get('f0_std_hz','')} Hz | {r.get('status','')} |"
+            f"| {r['model_id']} | {r.get('arch','')} | {r.get('peak_vram_mb','')} MB | "
+            f"{r.get('rtf','')} | {r.get('asr_cer','')} | {r.get('f0_std_hz','')} Hz | "
+            f"{voice} | {r.get('status','')} |"
         )
     lines.append("")
 
@@ -73,6 +79,18 @@ def main():
         else:
             notes = f"FAILED / skipped — {r.get('notes','')}"
         lines.append(f"*   **Expressiveness / Quality Notes:** {notes}")
+        # voice guardrail line
+        ctrl = r.get("voice_control", "")
+        det = r.get("detected_gender", "?")
+        req = r.get("requested_gender", "")
+        if ctrl == "selectable":
+            voice = f"selectable → forced to **{req}** (detected {det}, F0 mean {r.get('f0_mean_hz','?')} Hz)"
+        elif ctrl == "fixed":
+            ok = "✅ satisfies" if det == req else "⚠️ VIOLATES"
+            voice = f"fixed/baked-in voice — detected **{det}** (F0 mean {r.get('f0_mean_hz','?')} Hz); {ok} the {req}-only guardrail"
+        else:
+            voice = "n/a"
+        lines.append(f"*   **Voice ({req}-guardrail):** {voice}")
         lines.append(f"*   **Memory Consumed:** {r.get('peak_vram_mb','?')} MB VRAM (peak, process), "
                      f"{r.get('peak_rss_mb','?')} MB CPU RSS")
         if r.get("asr_hypothesis"):
