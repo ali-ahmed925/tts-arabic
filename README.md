@@ -1,19 +1,30 @@
 # Arabic TTS Evaluation Pipeline
 
-Benchmarks open-source **Arabic** text-to-speech models that fit a strict **≤700 MB VRAM** budget, on a fixed interview-style sentence. For each model it generates audio, measures compute (peak VRAM + CPU RAM), scores quality, and streams results to a CSV + Markdown report.
+Benchmarks open-source **Arabic** text-to-speech models on a fixed interview-style sentence. For each model it generates audio, measures compute (peak VRAM + CPU RAM), scores quality, and streams results to a CSV + Markdown report.
 
-The goal: find a model that sounds **natural/expressive**, not robotic, while staying inside a small memory budget.
+The goal: find a model that sounds **natural/expressive**, not robotic. Models are grouped in two tiers:
+- **Strict tier — ≤700 MB VRAM** (small VITS / SpeechT5 / ONNX models)
+- **Expressive tier — ≤~2 GB VRAM** (e.g. XTTS-v2), each isolated in its own venv
 
 ## Results (current)
 
-| Model | Arch | Peak VRAM | ASR-CER ↓ | F0 std ↑ | RTF ↓ |
+| Model | Arch | Peak VRAM | CPU RAM | ASR-CER ↓ | F0 std ↑ |
 |---|---|---|---|---|---|
-| `facebook/mms-tts-ara` | VITS 36M | 524 MB | 0.094 | 42.1 Hz | 0.057 |
-| `wasmdashai/lahja-sa-huba-v1` | VITS 36M (Saudi) | 414 MB | 0.11 | 20.3 Hz | 0.095 |
-| `SeyedAli/Arabic-Speech-synthesis-MMS` | VITS 36M | 524 MB | 0.127 | 41.4 Hz | 0.059 |
-| `MBZUAI/speecht5_tts_clartts_ar` | SpeechT5 (fp16) | 546 MB | 0.066 | 16.4 Hz | 0.166 |
+| `facebook/mms-tts-ara` | VITS 36M | 524 MB | 1393 MB | 0.094 | 42.1 Hz |
+| `wasmdashai/lahja-sa-huba-v1` | VITS 36M (Saudi) | 414 MB | 1387 MB | 0.11 | 20.3 Hz |
+| `SeyedAli/Arabic-Speech-synthesis-MMS` | VITS 36M | 524 MB | 1396 MB | 0.127 | 41.4 Hz |
+| `MBZUAI/speecht5_tts_clartts_ar` | SpeechT5 fp16 | 546 MB | 1294 MB | 0.066 | 16.4 Hz |
+| `Supertone/supertonic-3` | ONNX (CPU) | 0 MB | 939 MB | 0.017 | 35.0 Hz |
+| `coqui/XTTS-v2` | GPT+HiFiGAN | 2466 MB | — | 0.315* | 15.7* Hz |
+| `k2-fsa/OmniVoice` (fp16) | LLM+codec | 2736 MB | — | **0.0** | 34.2 Hz |
 
-**Takeaway:** all four are highly intelligible but fairly monotone (low F0 variance) — the truly expressive models (Chatterbox, VoxCPM2, Higgs…) don't fit 700 MB. See the "Excluded models" section of the generated [report](results/report.md).
+All voices are forced **male** by the guardrail where selectable (see below); fixed VITS
+voices are detected — `lahja-sa-huba-v1` is female and flagged. `*` XTTS is stochastic and
+high-variance run-to-run (a smoke run hit CER 0.033 / F0 std 50). Regenerate with `./run.sh`.
+
+**Takeaway:** strict-tier VITS/SpeechT5 are intelligible but monotone. **OmniVoice** (CER 0.0)
+and **Supertonic** (CER 0.017, CPU/0 VRAM) are the standouts for intelligibility; OmniVoice and
+XTTS carry the most prosody but need the ~2 GB+ expressive tier.
 
 ## Metrics
 
@@ -26,7 +37,8 @@ The goal: find a model that sounds **natural/expressive**, not robotic, while st
 
 ## Requirements
 
-- Linux, Python **3.10–3.12** (tested on 3.12)
+- Linux, Python **3.10–3.13** (fully tested on 3.12; on 3.13 the deps install and the
+  numba-based metric was verified — the `transformers<5` pin is required there)
 - NVIDIA GPU with CUDA (optional — falls back to CPU)
 - **ffmpeg** on PATH (for MP3 export): `sudo apt-get install ffmpeg`
 
@@ -84,10 +96,29 @@ Then pass `PYTHON` and `EXTRA_DEPS` to `run.sh` (see below).
 PYTHON=$ENV_PY EXTRA_DEPS=./deps ./run.sh
 ```
 
-Model ids are the "id" fields in tts_eval/config.py:
-mms-tts-ara, lahja-sa-huba-v1, speecht5-clartts-ar, seyedali-mms-ar, audar-tts-v1-flash-q4, voicetut-tts.
+Model ids are the `"id"` fields in [tts_eval/config.py](tts_eval/config.py):
+`mms-tts-ara`, `lahja-sa-huba-v1`, `speecht5-clartts-ar`, `seyedali-mms-ar`, `supertonic-3`, `xtts-v2`, `omnivoice`, `voicetut-tts`, `vits-ar-sa-ahmad`, `vits-ar-sa-huba-v2`, `vits-ar`, `vits-ar-sa-A`, `vits-ar-ye-sa`, `audar-tts-v1-flash-q4`. Deferred models: see [TODO_MODELS.md](TODO_MODELS.md).
+
+> The 5 `wasmdashai` Arabic dialect VITS (`vits-ar*`) are **zero-code** additions (reuse the `vits` adapter, run in the base env). They're easily integrable and in-budget, but measured **worse** (CER 0.18–0.31) than the top models — added for dialect breadth, not to beat the best.
 
 Re-running a model **overwrites its own CSV row** (upsert) — no duplicates.
+
+## Direct-to-GPU variant (`run_gpu.sh`)
+
+`run_gpu.sh` runs the same evaluation but loads transformers models **straight onto
+the GPU** (`device_map` / `low_cpu_mem_usage`) instead of staging a full weight copy
+in CPU RAM, and writes to **`results_gpu/`** so you can compare `peak_rss_mb`.
+
+```bash
+PYTHON=<env-py> EXTRA_DEPS=./deps ./run_gpu.sh
+```
+
+Effect (measured): it slashes CPU RAM for **heavy** models — OmniVoice `peak_rss_mb`
+dropped **4707 → 2774 MB (−1.9 GB)** with identical VRAM and quality. Small models
+(VITS/SpeechT5) barely change (the ~1.3 GB Python/CUDA-library baseline dominates), and
+XTTS (coqui loader) / Supertonic (CPU/ONNX) are unaffected. **VITS are opted out** of the
+direct path — `device_map` produced silent output for some VITS checkpoints, and they
+gain no RSS benefit anyway.
 
 ## Outputs (`results/`)
 
@@ -108,6 +139,30 @@ results/
 2. Run it: `./run.sh my-model`
 
 `"kind"` selects an **adapter** in [tts_eval/adapters.py](tts_eval/adapters.py). Same architecture as an existing model → reuse its `kind` (no code). New architecture/runtime → add one small adapter that returns `generate(text) -> (wav_float32_mono, sr)`; everything else (metrics, VRAM measurement, CSV, MP3, report) is architecture-agnostic and unchanged.
+
+## Expressive-tier models (isolated envs)
+
+Heavyweight runtimes (coqui-tts, chatterbox, …) pull their own `transformers`/`torch`
+and **must not share** the base env — mixing them breaks the VITS stack. So each gets its
+own venv, and its `MODELS` entry sets a `"python"` field pointing at that venv's
+interpreter; the runner launches that model's subprocess with it. Trick: build the venv
+with `--system-site-packages` from the base CUDA env so it **inherits torch/transformers/
+librosa** (no 2.5 GB torch re-download) and only layers the model package on top.
+
+```bash
+BASE=/home/owais/miniconda3/envs/avatar-gen/bin/python   # env with CUDA torch
+
+# Supertonic (ONNX, CPU — tiny):
+$BASE -m venv --system-site-packages envs/supertonic
+envs/supertonic/bin/python -m pip install supertonic onnxruntime
+
+# XTTS-v2 (coqui-tts). Pin transformers<5 — 5.x removed a symbol coqui imports:
+$BASE -m venv --system-site-packages envs/xtts
+envs/xtts/bin/python -m pip install coqui-tts "torchaudio==2.5.1" "transformers>=4.44,<5" \
+  --extra-index-url https://download.pytorch.org/whl/cu121
+```
+
+Then `./run.sh supertonic-3 xtts-v2`. Envs live under `envs/` (git-ignored).
 
 ## Project structure
 

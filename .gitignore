@@ -10,6 +10,8 @@ venv/
 env/
 # isolated `pip --target` dir used when reusing an existing env
 deps/
+# per-model isolated venvs (coqui-tts, supertonic, …)
+envs/
 
 # ---- Generated pipeline outputs ----
 # intermediate WAVs (MP3s are the kept deliverable)
@@ -32,3 +34,6 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+
+# direct-GPU comparison run
+results_gpu/audio/*.wav
