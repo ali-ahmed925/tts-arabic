@@ -152,8 +152,14 @@ def main():
         # heavy runtime like coqui-tts). Default to this process's interpreter.
         interp = spec.get("python") or sys.executable
         if not Path(interp).exists():
-            print(f"\n[{spec['id']}] SKIP: interpreter not found: {interp}", flush=True)
-            continue
+            # venv paths in config.py are written Linux-style (envs/x/bin/python);
+            # on Windows the same venv's interpreter lives at envs/x/Scripts/python.exe.
+            winterp = Path(interp).parent.parent / "Scripts" / "python.exe"
+            if winterp.exists():
+                interp = str(winterp)
+            else:
+                print(f"\n[{spec['id']}] SKIP: interpreter not found: {interp}", flush=True)
+                continue
         # fresh process per model -> clean CUDA context, isolated peak VRAM
         subprocess.run([interp, __file__, "--single", spec["id"]], check=False)
     print(f"\nDone. CSV -> {C.CSV_PATH}")

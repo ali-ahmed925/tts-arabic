@@ -7,12 +7,18 @@ import time
 
 
 def _proc_rss_mb() -> float:
-    """Resident set size of this process in MB (from /proc)."""
+    """Resident set size of this process in MB (from /proc; falls back to
+    psutil where /proc isn't available, e.g. native Windows)."""
     try:
         with open(f"/proc/{os.getpid()}/status") as f:
             for line in f:
                 if line.startswith("VmRSS:"):
                     return int(line.split()[1]) / 1024.0
+    except Exception:
+        pass
+    try:
+        import psutil
+        return psutil.Process(os.getpid()).memory_info().rss / (1024 * 1024)
     except Exception:
         pass
     return 0.0
