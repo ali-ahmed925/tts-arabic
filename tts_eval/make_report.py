@@ -104,7 +104,7 @@ def main():
         lines.append(f"*   `{repo}` — {why}")
     lines.append("")
 
-    C.REPORT_PATH.write_text("\n".join(lines))
+    C.REPORT_PATH.write_text("\n".join(lines), encoding="utf-8")
     print(f"report -> {C.REPORT_PATH}")
 
 
