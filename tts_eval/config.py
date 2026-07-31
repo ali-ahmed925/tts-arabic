@@ -147,6 +147,19 @@ MODELS = [
         "notes": "k2-fsa OmniVoice, expressive multilingual; text voice-design (gender tags). ~2 GB tier.",
     },
     {
+        "id": "omnivoice-int8",
+        "hf_repo": "k2-fsa/OmniVoice",
+        "kind": "omnivoice",
+        "python": str(ROOT / "envs/omnivoice/bin/python"),
+        "instructs": {"male": "male", "female": "female"},  # selectable via voice-design
+        "quantization": "int8",  # bitsandbytes INT8 LLM backbone; audio_heads kept fp16
+        "lang": "Arabic (arb/MSA + dialects)",
+        "params": "~0.6B (INT8 LLM backbone)",
+        "in_budget": False,
+        "notes": "k2-fsa OmniVoice, INT8-quantized LLM backbone via bitsandbytes "
+                 "(audio_heads skipped); compare VRAM/quality vs. the fp16 'omnivoice' row.",
+    },
+    {
         "id": "xtts-v2",
         "hf_repo": "coqui/XTTS-v2",
         "kind": "xtts",

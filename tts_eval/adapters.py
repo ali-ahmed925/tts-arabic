@@ -189,17 +189,40 @@ def load_xtts(device, speaker=None):
 
 
 # ------------------------------- OmniVoice ------------------------------------
-def load_omnivoice(repo, device, instruct="male", language="arb"):
+def load_omnivoice(repo, device, instruct="male", language="arb", quantization=None):
     """OmniVoice-architecture models (k2-fsa/OmniVoice, VoiceTut-TTS, ...):
     massively-multilingual expressive TTS. Standard Arabic = `arb`. Voice is
     designed via `instruct` from a controlled vocabulary that includes gender
     tags (`male`/`female`, `low pitch`, ...), so no reference clip is needed and
-    the male-voice guardrail applies."""
+    the male-voice guardrail applies.
+
+    quantization=None (default): unchanged fp16/fp32 path via _hf_load.
+
+    quantization="int8" (device="cuda" only): quantizes the LLM backbone with
+    bitsandbytes via BitsAndBytesConfig(load_in_8bit=True), skipping
+    audio_heads (the final audio-token projection) for numerical stability.
+    Quantized models are dispatched to a device during from_pretrained via
+    device_map and must not be moved afterward with .to(), so this path
+    bypasses _hf_load's .to(device) tail and sets device_map directly."""
     import torch
     from omnivoice import OmniVoice
     # fp16 on GPU roughly halves VRAM (~4GB -> ~2.1GB) to stay near the ~2GB tier.
     dtype = torch.float16 if device == "cuda" else torch.float32
-    model = _hf_load(OmniVoice, repo, device, dtype=dtype)
+    if quantization == "int8" and device == "cuda":
+        from transformers import BitsAndBytesConfig
+        quant_config = BitsAndBytesConfig(
+            load_in_8bit=True,
+            llm_int8_skip_modules=["audio_heads"],
+        )
+        model = OmniVoice.from_pretrained(
+            repo, torch_dtype=dtype, quantization_config=quant_config,
+            device_map={"": 0},
+        ).eval()
+    else:
+        if quantization == "int8":
+            print("  [omnivoice] quantization=int8 requires device=cuda; "
+                  "falling back to the default fp16/fp32 path.", flush=True)
+        model = _hf_load(OmniVoice, repo, device, dtype=dtype)
     sr = int(getattr(model, "sampling_rate", 24000))
 
     def generate(text):
@@ -248,7 +271,8 @@ ADAPTERS = {
     "speecht5": lambda m, dev: load_speecht5(m["hf_repo"], dev, gender=_gender()),
     "supertonic": lambda m, dev: load_supertonic(dev, voice=_pick(m.get("voices"), "M1")),
     "xtts": lambda m, dev: load_xtts(dev, speaker=_pick(m.get("speakers"), None)),
-    "omnivoice": lambda m, dev: load_omnivoice(m["hf_repo"], dev, instruct=_pick(m.get("instructs"), "male")),
+    "omnivoice": lambda m, dev: load_omnivoice(m["hf_repo"], dev, instruct=_pick(m.get("instructs"), "male"),
+                                               quantization=m.get("quantization")),
     "audar_gguf": lambda m, dev: load_audar_gguf(m["hf_repo"], dev, m["gguf_file"]),
 }
 
