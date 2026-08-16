@@ -160,6 +160,22 @@ MODELS = [
                  "(audio_heads skipped); compare VRAM/quality vs. the fp16 'omnivoice' row.",
     },
     {
+        "id": "omnivoice-cpu-offload",
+        "hf_repo": "k2-fsa/OmniVoice",
+        "kind": "omnivoice",
+        "python": str(ROOT / "envs/omnivoice/bin/python"),
+        "instructs": {"male": "male", "female": "female"},  # selectable via voice-design
+        "quantization": "cpu_offload",  # accelerate device_map="auto" + max_memory cap forces part of the LLM onto CPU
+        "offload_max_gpu_mb": 300,  # artificial GPU cap; the ~1.2GB fp16 model would otherwise fit whole on GPU
+        "lang": "Arabic (arb/MSA + dialects)",
+        "params": "~0.6B (fp16, partial CPU offload via HF Accelerate)",
+        "in_budget": False,
+        "notes": "k2-fsa OmniVoice, fp16 weights dispatched via accelerate device_map='auto' "
+                 "under a 300MB GPU cap; compare peak_vram_mb/peak_rss_mb/rtf vs. the fp16 "
+                 "'omnivoice' and INT8 'omnivoice-int8' rows to show the memory/latency tradeoff "
+                 "of naive CPU offload on a model that already fits in VRAM.",
+    },
+    {
         "id": "xtts-v2",
         "hf_repo": "coqui/XTTS-v2",
         "kind": "xtts",

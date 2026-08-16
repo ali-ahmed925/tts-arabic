@@ -1,0 +1,4 @@
+﻿model_id,hf_repo,arch,params,lang,status,peak_vram_mb,peak_rss_mb,load_s,infer_s,audio_s,rtf,asr_cer,f0_std_hz,f0_mean_hz,voiced_ratio,voice_control,requested_gender,detected_gender,mp3,asr_hypothesis,notes
+moss-tts-nano,OpenMOSS-Team/MOSS-TTS-Nano,MOSS-TTS-Nano,,Arabic,ok,781,872.86,,32.814,27.44,1.196,0.1736,88.27,159.87,1.0,voice cloning,male,,results/moss-tts-nano/audio/moss-tts-nano-voice-clone.wav,سبح هل خير؟ وشكرا لك على واتك لتحدث معي اليوم أطلع لها إلى فهم أسلوبك في الأعمل والشخصيتك بشكل أفضل لنبدأ هل يمكنك أن تحدثني عن موقف أضدرت في إلى التكيف مع مشروع أو مبادرة جديدة في العمل كيف كان شعورك وانت تألم شيء جديد تماما,MOSS-TTS-Nano voice cloning; Tesla T4; 48 kHz output.
+
+
