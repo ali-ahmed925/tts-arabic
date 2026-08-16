@@ -189,17 +189,61 @@ def load_xtts(device, speaker=None):
 
 
 # ------------------------------- OmniVoice ------------------------------------
-def load_omnivoice(repo, device, instruct="male", language="arb"):
+def load_omnivoice(repo, device, instruct="male", language="arb", quantization=None,
+                   offload_max_gpu_mb=None):
     """OmniVoice-architecture models (k2-fsa/OmniVoice, VoiceTut-TTS, ...):
     massively-multilingual expressive TTS. Standard Arabic = `arb`. Voice is
     designed via `instruct` from a controlled vocabulary that includes gender
     tags (`male`/`female`, `low pitch`, ...), so no reference clip is needed and
-    the male-voice guardrail applies."""
+    the male-voice guardrail applies.
+
+    quantization=None (default): unchanged fp16/fp32 path via _hf_load.
+
+    quantization="int8" (device="cuda" only): quantizes the LLM backbone with
+    bitsandbytes via BitsAndBytesConfig(load_in_8bit=True), skipping
+    audio_heads (the final audio-token projection) for numerical stability.
+    Quantized models are dispatched to a device during from_pretrained via
+    device_map and must not be moved afterward with .to(), so this path
+    bypasses _hf_load's .to(device) tail and sets device_map directly.
+
+    quantization="cpu_offload" (device="cuda" only): no quantization, still
+    fp16 weights, but dispatched via HF Accelerate's device_map="auto" under
+    an artificially low `max_memory` cap on GPU 0 (`offload_max_gpu_mb`),
+    forcing part of the LLM backbone onto CPU RAM. OmniVoice is only ~0.6B
+    params and already fits in VRAM, so this is not expected to be a free
+    win: it trades peak_vram_mb for higher peak_rss_mb and, since generate()
+    runs an iterative denoising loop that calls the LLM forward pass
+    num_step (default 32) times, every CPU-resident layer is shuttled across
+    PCIe on each of those steps rather than once. Same as the int8 path,
+    dispatched models must not be moved afterward with .to()."""
     import torch
     from omnivoice import OmniVoice
     # fp16 on GPU roughly halves VRAM (~4GB -> ~2.1GB) to stay near the ~2GB tier.
     dtype = torch.float16 if device == "cuda" else torch.float32
-    model = _hf_load(OmniVoice, repo, device, dtype=dtype)
+    if quantization == "int8" and device == "cuda":
+        from transformers import BitsAndBytesConfig
+        quant_config = BitsAndBytesConfig(
+            load_in_8bit=True,
+            llm_int8_skip_modules=["audio_heads"],
+        )
+        model = OmniVoice.from_pretrained(
+            repo, torch_dtype=dtype, quantization_config=quant_config,
+            device_map={"": 0},
+        ).eval()
+    elif quantization == "cpu_offload" and device == "cuda":
+        gpu_cap_mb = offload_max_gpu_mb or 300
+        model = OmniVoice.from_pretrained(
+            repo, torch_dtype=dtype, device_map="auto",
+            max_memory={0: f"{gpu_cap_mb}MiB", "cpu": "8GiB"},
+        ).eval()
+    else:
+        if quantization == "int8":
+            print("  [omnivoice] quantization=int8 requires device=cuda; "
+                  "falling back to the default fp16/fp32 path.", flush=True)
+        elif quantization == "cpu_offload":
+            print("  [omnivoice] quantization=cpu_offload requires device=cuda; "
+                  "falling back to the default fp16/fp32 path.", flush=True)
+        model = _hf_load(OmniVoice, repo, device, dtype=dtype)
     sr = int(getattr(model, "sampling_rate", 24000))
 
     def generate(text):
@@ -248,7 +292,9 @@ ADAPTERS = {
     "speecht5": lambda m, dev: load_speecht5(m["hf_repo"], dev, gender=_gender()),
     "supertonic": lambda m, dev: load_supertonic(dev, voice=_pick(m.get("voices"), "M1")),
     "xtts": lambda m, dev: load_xtts(dev, speaker=_pick(m.get("speakers"), None)),
-    "omnivoice": lambda m, dev: load_omnivoice(m["hf_repo"], dev, instruct=_pick(m.get("instructs"), "male")),
+    "omnivoice": lambda m, dev: load_omnivoice(m["hf_repo"], dev, instruct=_pick(m.get("instructs"), "male"),
+                                               quantization=m.get("quantization"),
+                                               offload_max_gpu_mb=m.get("offload_max_gpu_mb")),
     "audar_gguf": lambda m, dev: load_audar_gguf(m["hf_repo"], dev, m["gguf_file"]),
 }
 

@@ -37,3 +37,6 @@ Thumbs.db
 
 # direct-GPU comparison run
 results_gpu/audio/*.wav
+
+results/omnivoice/csv/omnivoice_optimization_results_backup.csv
+results/moss-tts-nano/csv/moss_tts_nano_result_backup.csv
